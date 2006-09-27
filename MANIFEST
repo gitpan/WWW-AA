@@ -1,0 +1,7 @@
+Changes
+Makefile.PL
+MANIFEST
+README
+t/WWW-AA.t
+lib/WWW/AA.pm
+META.yml                                 Module meta-data (added by MakeMaker)

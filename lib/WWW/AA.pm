@@ -7,49 +7,36 @@ use warnings;
 require Exporter;
 
 our @ISA = qw(Exporter);
-
-# Items to export into callers namespace by default. Note: do not export
-# names by default without a very good reason. Use EXPORT_OK instead.
-# Do not simply export all your public functions/methods/constants.
-
-# This allows declaration	use WWW::AA ':all';
-# If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
-# will save memory.
-our %EXPORT_TAGS = ( 'all' => [ qw(
-	
-) ] );
-
+our %EXPORT_TAGS = ( 'all' => [ qw( ) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
+our @EXPORT = qw( );
+our $VERSION = '0.02';
 
-our @EXPORT = qw( math adjust );
-
-our $VERSION = '0.01 euc only';
-
-
-# Preloaded methods go here.
+#-------------------------------------------------------------------------------
+# Module declaration
+#-------------------------------------------------------------------------------
 sub new {
 	my $self = {};
 	bless $self;
 	return $self;
 }
-
-# $aart -> math($str, $encode);
-# AAのピクセル値を返す
-sub math {
+#-------------------------------------------------------------------------------
+# The number of dots is calculated.
+# $aart -> calcu($str, $encode);
+#-------------------------------------------------------------------------------
+sub calcu {
 	my $self   = shift;
 	my $str    = shift;
 	my $encode = shift;
 
-	if ($encode eq 'euc') {
-		return $self -> math_euc($str);
-	}
+	return $self -> calcu_euc($str) if $encode eq 'euc';
 }
 
-# 
-sub math_euc {
+# For EUC-JP $aart -> calcu_euc($str);
+sub calcu_euc {
 	my $self = shift;
 	my $str  = shift;
-#print "math_euc)  str: $str ";
+
 	my $count = 0;
 	$count += 15 * ($str =~ s/\xa1\xbc|\xa3\xcd|\xa3\xed|\xa4\xa2|\xa4\xa4|\xa4\xaa|\xa4\xb1|\xa4\xb9|\xa4\xbd|\xa4\xbe|\xa4\xbf|\xa4\xc0|\xa4\xc4|\xa4\xc5|\xa4\xcb|\xa4\xd2|\xa4\xd3|\xa4\xd4|\xa4\xf3|\xa5\xa6|\xa5\xaa|\xa5\xac|\xa5\xad|\xa5\xae|\xa5\xb0|\xa5\xb1|\xa5\xb2|\xa5\xba|\xa5\xbb|\xa5\xc0|\xa5\xc1|\xa5\xc2|\xa5\xc5|\xa5\xc7|\xa5\xca|\xa5\xcb|\xa5\xcd|\xa5\xd8|\xa5\xd9|\xa5\xda|\xa5\xdb|\xa5\xdc|\xa5\xdd|\xa5\xe6|\xa5\xef|\xa5\xf4//g);
 	$count += 14 * ($str =~ s/\xa4\xa8|\xa4\xad|\xa4\xae|\xa4\xb4|\xa4\xb6|\xa4\xc1|\xa4\xc2|\xa4\xc6|\xa4\xc7|\xa4\xc9|\xa4\xca|\xa4\xde|\xa4\xe3|\xa4\xe5|\xa4\xe8|\xa4\xeb|\xa4\xed|\xa4\xee|\xa4\xf2|\xa5\xa2|\xa5\xa8|\xa5\xb4|\xa5\xb7|\xa5\xb8|\xa5\xb9|\xa5\xbe|\xa5\xc4|\xa5\xc6|\xa5\xd3|\xa5\xd4|\xa5\xd6|\xa5\xd7|\xa5\xde|\xa5\xe2|\xa5\xec|\xa5\xed|\xa5\xf3//g);
@@ -65,19 +52,13 @@ sub math_euc {
 	$count +=  4 * ($str =~ s/\x21|\x49|\x6a|\x7b|\x7c|\x7d|\x8e\xde|\x8e\xdf|\xa3\xc9|\xa3\xe9|\xa3\xea|\xa3\xec//g);
 	$count +=  3 * ($str =~ s/\x27|\x2c|\x2e|\x3a|\x3b|\x69|\x6c//g);
 	$count += 16 * ($str =~ s/..//g);
-#print " count:$count\n";
+
 	return $count;
 }
-
-# $aart -> adjust($str_l, $str_r, R, 600);
-# 左$str_l、右$str_r、調整ドットをつける位置LorR、サイズ
-
-# 文字列（$str） を左に、調整ドット（R）を右に、サイズ（$size）600ピクセルで整形。
-#     $aart -> adjust($str, R, 600);
-# 文字列（$str） を右に、調整ドット（L）を左に、サイズ（$size）600ピクセルで整形。
-#     $aart -> adjust($str, R, 600);
-# 文字列（$strl）を左に、文字列（$strr）を右に、調整ドットを中央に、サイズ（$size）600ピクセルで整形。
-#     $aart -> adjust($strl, $strr, 600);
+#-------------------------------------------------------------------------------
+# The character string that adds the adjustment dot is returned.
+# $aart -> adjust($str_l, $str_r, position, $size);
+#-------------------------------------------------------------------------------
 sub adjust {
 	my $self     = shift;
 	my $str_l    = shift;
@@ -89,206 +70,212 @@ sub adjust {
 	return $self -> adjust_left($str_l, $str_r, $size)  if $position eq 'L';
 }
 
-# 調整ドットが右に位置するように
+# The adjustment dot is arranged right. $aart -> adjust_right($str_l, $str_r, $size);
 sub adjust_right {
 	my $self  = shift;
 	my $str_l = shift;
 	my $str_r = shift;
 	my $size  = shift;
-#print "<hr>";
-	my $count = $self -> math_euc("$str_l$str_r");
-#print " str_r:$str_r  str_l:$str_l count $count\n";
-	# 指定ピクセル値と文字列（$str）のピクセル値との差（$diff）
+
+	my $count = $self -> calcu_euc("$str_l$str_r");
 	my $diff = $size - $count;
-#print " size $size diff ", $diff;
-	# 全角スペースを最大何個（$space）入れられるか
 	my $space = int( $diff/11 );
-#print " spece ", $space;
-	# 全角で埋めた残りのピクセル値（$diff）
+
 	my $set2 = '';
 	for (my $t = 0; $t < $space; $t ++) {
 		$diff -= 11;
-		$set2 .= '　';
+		$set2 .= "\xa1\xa1";
 	}
-#print " diff ",$diff;
+
 	if ($diff == 1) {
-		if ($set2 =~ s/\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1$//) { $set2 .= ' 　 　 　 .'; }
-		else { $set2 =~ s/\xa1\xa1$//; $set2 .= '....'; }
-	#		$set2 =~ s/\xa1\xa1$//; $set2 .= '....';
+		if ($set2 =~ s/\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1$/ \xa1\xa1 \xa1\xa1 \xa1\xa1 \./) {}
+		else { $set2 =~ s/\xa1\xa1$/\.\.\.\./; }
 	}
-	if ($diff == 2) { $set2 =~ s/\xa1\xa1\xa1\xa1$//; $set2 .= ' 　 .'; }
-	if ($diff == 3) { $set2 .= '.'; }
+	if ($diff == 2) { $set2 =~ s/\xa1\xa1\xa1\xa1$/ \xa1\xa1 \./ }
+	if ($diff == 3) { $set2 .= '.' }
 	if ($diff == 4) {
-		if ($set2 =~ s/\xa1\xa1\xa1\xa1\xa1\xa1$//) { $set2 .= ' 　 　 '; }
-		else { $set2 =~ s/\xa1\xa1$//; $set2 .= '.....'; }
-	#		$set2 =~ s/\xa1\xa1$//; $set2 .= '.....';
+		if ($set2 =~ s/\xa1\xa1\xa1\xa1\xa1\xa1$/ \xa1\xa1 \xa1\xa1 /) {}
+		else { $set2 =~ s/\xa1\xa1$/\.\.\.\.\./; }
 	}
-	if ($diff == 5) { $set2 .= ' '; }
+	if ($diff == 5) { $set2 .= ' ' }
 	if ($diff == 6) {
-		if ($set2 =~ s/\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1$//) { $set2 .= ' 　 　 　 . '; }
-		else { $set2 .= '..'; }
-	#		$set2 .= '..';
+		if ($set2 =~ s/\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1$/ \xa1\xa1 \xa1\xa1 \xa1\xa1 \. /) {}
+		else { $set2 .= '..' }
 	}
-	if ($diff == 7) { $set2 =~ s/\xa1\xa1\xa1\xa1\xa1\xa1$//; $set2 .= ' 　 　 .'; }
-	if ($diff == 8) { $set2 .= '. '; }
+	if ($diff == 7) { $set2 =~ s/\xa1\xa1\xa1\xa1\xa1\xa1$/ \xa1\xa1 \xa1\xa1 \./ }
+	if ($diff == 8) { $set2 .= '. ' }
 	if ($diff == 9) {
-		if ($set2 =~ s/\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1$//) { $set2 .= ' 　 　 　 '; }
-		else { $set2 .= '...'; }
-	#		$set2 .= '...';
+		if ($set2 =~ s/\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1$/ \xa1\xa1 \xa1\xa1 \xa1\xa1 /) {}
+		else { $set2 .= '...' }
 	}
-	if ($diff == 10) { $set2 =~ s/\xa1\xa1\xa1\xa1$//; $set2 .= '　 　 '; }
+	if ($diff == 10) { $set2 =~ s/\xa1\xa1\xa1\xa1$/\xa1\xa1 \xa1\xa1 / }
 
-#print " str_l ",$self -> math_euc($str_l);
-#print " str_r ",$self -> math_euc($str_r);
-#print " set2 ",$self -> math_euc($set2);
-#print " total ",$self -> math_euc("$str_l$set2$str_r");
-#print "<br>\n";
 	return "$str_l$set2$str_r";
-
 }
 
-# 調整ドットが左に位置するように
+# The adjustment dot is arranged left. $aart -> adjust_left($str_l, $str_r, $size);
 sub adjust_left {
-	my $self = shift;
+	my $self   = shift;
 	my $str_l  = shift;
 	my $str_r  = shift;
-	my $size = shift;
+	my $size   = shift;
 
-	my $count = $self -> math_euc("$str_l$str_r");
-
-	# 指定ピクセル値と文字列（$str）のピクセル値との差（$diff）
+	my $count = $self -> calcu_euc("$str_l$str_r");
 	my $diff = $size - $count;
-
-	# 全角スペースを最大何個（$space）入れられるか
 	my $space = int( $diff/11 );
 
-	# 全角で埋めた残りのピクセル値（$diff）
-	my $set2;
+	my $set2 = '';
 	for (my $t = 0; $t < $space; $t ++) {
 		$diff -= 11;
-		$set2 .= '　';
+		$set2 .= "\xa1\xa1";
 	}
 	if ($diff == 1) {
-		if ($set2 =~ s/\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1$//) { $set2 = '. 　 　 　 '.$set2; }
-		else { $set2 =~ s/\xa1\xa1$//; $set2 = '....'.$set2; }
-#		$set2 =~ s/\xa1\xa1$//; $set2 = '....'.$set2;
+		if ($set2 =~ s/^\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1/\. \xa1\xa1 \xa1\xa1 \xa1\xa1 /) {}
+		else { $set2 =~ s/^\xa1\xa1/\.\.\.\./; }
 	}
-	if ($diff == 2) { $set2 =~ s/\xa1\xa1\xa1\xa1$//; $set2 = '. 　 '.$set2; }
-	if ($diff == 3) { $set2 = '.'.$set2; }
+	if ($diff == 2) { $set2 =~ s/^\xa1\xa1\xa1\xa1/\. \xa1\xa1 / }
+	if ($diff == 3) { $set2 = '.'.$set2 }
 	if ($diff == 4) {
-		if ($set2 =~ s/\xa1\xa1\xa1\xa1\xa1\xa1$//) { $set2 = ' 　 　 '.$set2; }
-		else { $set2 =~ s/\xa1\xa1$//; $set2 = '.....'.$set2; }
-#		$set2 =~ s/\xa1\xa1$//; $set2 = '.....'.$set2;
+		if ($set2 =~ s/^\xa1\xa1\xa1\xa1\xa1\xa1/ \xa1\xa1 \xa1\xa1 /) {}
+		else { $set2 =~ s/^\xa1\xa1/\.\.\.\.\./ }
 	}
-	if ($diff == 5) { $set2 = ' '.$set2; }
+	if ($diff == 5) { $set2 = ' '.$set2 }
 	if ($diff == 6) {
-		if ($set2 =~ s/\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1$//) { $set2 = ' . 　 　 　 '.$set2; }
-		else { $set2 = '..'.$set2; }
-#		$set2 = '..'.$set2;
+		if ($set2 =~ s/^\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1/ \. \xa1\xa1 \xa1\xa1 \xa1\xa1 /) {}
+		else { $set2 = '..'.$set2 }
 	}
-	if ($diff == 7) { $set2 =~ s/\xa1\xa1\xa1\xa1\xa1\xa1$//; $set2 = '. 　 　 '.$set2; }
-	if ($diff == 8) { $set2 = '. '.$set2; }
+	if ($diff == 7) { $set2 =~ s/^\xa1\xa1\xa1\xa1\xa1\xa1/\. \xa1\xa1 \xa1\xa1 / }
+	if ($diff == 8) { $set2 = '. '.$set2 }
 	if ($diff == 9) {
-		if ($set2 =~ s/\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1$//) { $set2 = ' 　 　 　 '.$set2; }
-		else { $set2 = '...'.$set2; }
-#		$set2 = '...'.$set2;
+		if ($set2 =~ s/^\xa1\xa1\xa1\xa1\xa1\xa1\xa1\xa1/ \xa1\xa1 \xa1\xa1 \xa1\xa1 /) {}
+		else { $set2 = '...'.$set2 }
 	}
-	if ($diff == 10) { $set2 =~ s/\xa1\xa1\xa1\xa1$//; $set2 = '　 　 '.$set2; }
+	if ($diff == 10) { $set2 =~ s/^\xa1\xa1\xa1\xa1/\xa1\xa1 \xa1\xa1 / }
 
-#	print "<hr>",$self -> math_euc("$str_l, $set2, $str_r"),"<hr>";
-
-return "$str_l$set2$str_r";
-
+	return "$str_l$set2$str_r";
 }
 
-sub lineup {
-	my $self = shift;
+#-------------------------------------------------------------------------------
+# The number of minimum pixels where the character string of
+# the array becomes complete is returned.
+#-------------------------------------------------------------------------------
+sub shorter_euc {
+	my $self  = shift;
 	my @array = @_;
-	my $fit = 0;
+	my $fit   = 0;
 
 	foreach my $buf (@array) {
-		my $set = $self -> math_euc($buf);
-#print "set:$set  fit:$fit\n";
+		my $set = $self -> calcu_euc($buf);
 		next if $fit >= $set;
 		$fit = $set;
 	}
-#print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>$fit<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n";
-#print @array;
-#print "\n\n\n";
-while (1) {
-#for ( my $i =0; $i<50; $i++ ) {
-	my $flag = 0;
-	foreach my $set (@array) {
-#print "/";
-		my $temp = $self -> adjust_right($set,'',$fit);
-#print " set:$set  temp:$temp  fit:$fit\n";
-		my $temp2 = $self -> math_euc($temp);
-#print " temp:$temp  temp2:$temp2";
-#print " fit: $fit";
-#print "\n";
-		next if $fit == $temp2;
-		$flag = 1;
-		$fit ++;
-		last;
+
+	while (1) {
+		my $flag = 0;
+		foreach my $set (@array) {
+			my $temp = $self -> adjust_right($set,'',$fit);
+			my $temp2 = $self -> calcu_euc($temp);
+			next if $fit == $temp2;
+			$flag = 1;
+			$fit ++;
+			last;
+		}
+		last unless $flag;
 	}
-	last unless $flag;
+
+	return $fit;
 }
-#print "<i>$fit</i>  ";
-
-return $fit;
-
-}
-
 
 1;
 __END__
-# Below is stub documentation for your module. You'd better edit it!
 
 =head1 NAME
 
-WWW::AA - Perl extension for blah blah blah
+WWW::AA - The function to undergo plastic operation on the
+character string displayed in a browser is possessed though it
+is a MS P Gothic font of 12 points
 
 =head1 SYNOPSIS
 
   use WWW::AA;
-  blah blah blah
+
+  my $aart = new WWW::AA;
+  my $dot;
+  my $str = 'Character string';
+  my @str = ('Character string','Length adjustment');
+
+  print  "Content-type: text/html; charset=EUC-JP\n\n";
+  print  "<body>\n";
+  print  "WWW::AA Sample of usage<br>\n";
+
+  $dot = $aart -> calcu($str, 'euc');
+  printf "Number of dots of [%s] %d<br>\n", $str, $dot;
+
+  $dot = $aart -> calcu_euc($str);
+  printf "Number of dots of [%s] %d<br>\n", $str, $dot;
+
+  printf "|%s|<br>\n", $aart -> adjust($str, '', 'R', 350);
+  printf "|%s|<br>\n", $aart -> adjust($str, '', 'L', 350);
+  printf "|%s|<br>\n", $aart -> adjust('', $str, 'R', 350);
+  printf "|%s|<br>\n", $aart -> adjust('', $str, 'L', 350);
+  printf "|%s|<br>\n", $aart -> adjust($str, $str, 'R', 350);
+  printf "|%s|<br>\n", $aart -> adjust($str, $str, 'L', 350);
+
+  $dot = $aart -> shorter_euc(@str);
+  printf "|%s|<br>\n", $aart -> adjust($_, '', 'R', $dot) foreach @str;
+  printf "|%s|<br>\n", $aart -> adjust($_, '', 'L', $dot) foreach @str;
+  printf "|%s|<br>\n", $aart -> adjust('', $_, 'R', $dot) foreach @str;
+  printf "|%s|<br>\n", $aart -> adjust('', $_, 'L', $dot) foreach @str;
+
+  print  "</body>\n";
 
 =head1 DESCRIPTION
 
-Stub documentation for WWW::AA, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
+  WWW::AA Sample of usage
+  Number of dots of [Character string] 111
+  Number of dots of [Character string] 111
+  |Character string@@@@@@@@@@@@@@@@@@@@@. |
+  |Character string. @@@@@@@@@@@@@@@@@@@@@|
+  |@@@@@@@@@@@@@@@@@@@@@. Character string|
+  |. @@@@@@@@@@@@@@@@@@@@@Character string|
+  |Character string@@@@@@@@ @ @ .Character string|
+  |Character string. @ @ @@@@@@@@Character string|
+  |Character string.....|
+  |Length adjustment|
+  |Character string.....|
+  |Length adjustment|
+  |.....Character string|
+  |Length adjustment|
+  |.....Character string|
+  |Length adjustment|
 
-Blah blah blah.
+  Please replace "@" with \xa1\xa1 of EUC-JP.
+
+  The explanation of Japanese is here. 
+  http://penlabo.oh.land.to/WWW-AA.html
 
 =head2 EXPORT
 
 None by default.
 
-
-
 =head1 SEE ALSO
 
-Mention other useful documentation such as the documentation of
-related modules or operating system documentation (such as man pages
-in UNIX), or any relevant external documentation such as RFCs or
-standards.
-
-If you have a mailing list set up for your module, mention it here.
-
-If you have a web site set up for your module, mention it here.
+I think finding when "ASCII art" is retrieved in Japanese.
 
 =head1 AUTHOR
 
-A. U. Thor, E<lt>a.u.thor@a.galaxy.far.far.awayE<gt>
+satoshi ishikawa E<lt>penguin5@u01.gate01.comE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2006 by A. U. Thor
+  Copyright (C) 2006 satoshi ishikawa
+  and
+  Companions of lounge thread of bulletin board of "2 channels"
+  The explanation of "2 channnels" is here.
+  http://2ch.net/
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.8 or,
 at your option, any later version of Perl 5 you may have available.
-
 
 =cut

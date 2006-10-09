@@ -10,21 +10,7 @@ our @ISA = qw(Exporter);
 our %EXPORT_TAGS = ( 'all' => [ qw( ) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT = qw( );
-our $VERSION = '0.03';
-
-#-------------------------------------------------------------------------------
-# The character-code is declared.
-#-------------------------------------------------------------------------------
-my $code = 'euc';
-#-------------------------------------------------------------------------------
-# It is used until the following declaration exists by
-# the call that doesn't specify the character-code. 
-# $aart -> code('euc');
-#-------------------------------------------------------------------------------
-sub code {
-	my $self = shift;
-	$code    = shift;
-}
+our $VERSION = '0.05';
 #-------------------------------------------------------------------------------
 # Module declaration
 #-------------------------------------------------------------------------------
@@ -34,6 +20,22 @@ sub new {
 	return $self;
 }
 #-------------------------------------------------------------------------------
+# The character-code is declared.
+#-------------------------------------------------------------------------------
+my $code = 'euc';
+#-------------------------------------------------------------------------------
+# The character-code that the module processes is declared.
+# It is effective in the call that doesn't specify the character-code.
+# If it wants to process it with EUC-JP, it is euc.
+# $aart -> code('euc');
+# If it wants to process it with Shift_JIS, it is sjis.
+# $aart -> code('sjis');
+#-------------------------------------------------------------------------------
+sub code {
+	my $self = shift;
+	$code    = shift;
+}
+#-------------------------------------------------------------------------------
 # The number of dots is calculated.
 # $aart -> calcu($str);
 #-------------------------------------------------------------------------------
@@ -41,21 +43,18 @@ sub calcu {
 	my $self   = shift;
 	my $str    = shift;
 
-	return $self -> calcu_euc($str) if $code eq 'euc';
+	return $self -> calcu_euc($str)  if $code eq 'euc';
+	return $self -> calcu_sjis($str) if $code eq 'sjis';
 }
-# When you want to process it with EUC-JP
+# When you want to process it with EUC-JP disregarding the character-code declaration
 # $aart -> calcu_euc($str);
 sub calcu_euc {
 	my $self = shift;
 	my $str  = shift;
 
-	my $oneBytes   = '[\x00-\x7F]';
-	my $twoBytes   = '[\x8E\xA1-\xFE][\xA1-\xFE]';
-	my $threeBytes = '\x8F[\xA1-\xFE][\xA1-\xFE]';
-
 	my $count = 0;
 
-	foreach ($str =~ /$oneBytes|$twoBytes|$threeBytes/og) {
+	foreach ( $self -> divide_euc($str) ) {
 		if ($_ =~ s/\xa1\xbc|\xa3\xcd|\xa3\xed|\xa4\xa2|\xa4\xa4|\xa4\xaa|\xa4\xb1|\xa4\xb9|\xa4\xbd|\xa4\xbe|\xa4\xbf|\xa4\xc0|\xa4\xc4|\xa4\xc5|\xa4\xcb|\xa4\xd2|\xa4\xd3|\xa4\xd4|\xa4\xf3|\xa5\xa6|\xa5\xaa|\xa5\xac|\xa5\xad|\xa5\xae|\xa5\xb0|\xa5\xb1|\xa5\xb2|\xa5\xba|\xa5\xbb|\xa5\xc0|\xa5\xc1|\xa5\xc2|\xa5\xc5|\xa5\xc7|\xa5\xca|\xa5\xcb|\xa5\xcd|\xa5\xd8|\xa5\xd9|\xa5\xda|\xa5\xdb|\xa5\xdc|\xa5\xdd|\xa5\xe6|\xa5\xef|\xa5\xf4//g){
 			$count += 15;
 		}
@@ -102,6 +101,151 @@ sub calcu_euc {
 
 	return $count;
 }
+# When you want to process it with Shift_JIS disregarding the character-code declaration
+# $aart -> calcu_sjis($str);
+sub calcu_sjis {
+	my $self = shift;
+	my $str  = shift;
+
+	my $count = 0;
+
+	foreach ( $self -> divide_sjis($str) ) {
+		#------------------- 2 bytes
+		if ($_ =~ /../) {
+			if ($_ =~ s/\x81\x5b|\x82\x6c|\x82\x8d|\x82\xa0|\x82\xa2|\x82\xa8|\x82\xaf|\x82\xb7|\x82\xbb|\x82\xbc|\x82\xbd|\x82\xbe|\x82\xc2|\x82\xc3|\x82\xc9|\x82\xd0|\x82\xd1|\x82\xd2|\x82\xf1|\x83\x45|\x83\x49|\x83\x4b|\x83\x4c|\x83\x4d|\x83\x4f|\x83\x50|\x83\x51|\x83\x59|\x83\x5a|\x83\x5f|\x83\x60|\x83\x61|\x83\x64|\x83\x66|\x83\x69|\x83\x6a|\x83\x6c|\x83\x77|\x83\x78|\x83\x79|\x83\x7a|\x83\x7b|\x83\x7c|\x83\x86|\x83\x8f|\x83\x94//g){
+				$count += 15;
+			}
+			elsif ($_ =~ s/\x82\xa6|\x82\xab|\x82\xac|\x82\xb2|\x82\xb4|\x82\xbf|\x82\xc0|\x82\xc4|\x82\xc5|\x82\xc7|\x82\xc8|\x82\xdc|\x82\xe1|\x82\xe3|\x82\xe6|\x82\xe9|\x82\xeb|\x82\xec|\x82\xf0|\x83\x41|\x83\x47|\x83\x53|\x83\x56|\x83\x57|\x83\x58|\x83\x5d|\x83\x63|\x83\x65|\x83\x72|\x83\x73|\x83\x75|\x83\x76|\x83\x7d|\x83\x82|\x83\x8c|\x83\x8d|\x83\x93//g){
+				$count += 14;
+			}
+			elsif ($_ =~ s/\x82\x6e|\x82\x70|\x82\xa1|\x82\xa7|\x82\xae|\x82\xb1|\x82\xc1|\x82\xe0|\x82\xe7|\x83\x43|\x83\x48|\x83\x4a|\x83\x4e|\x83\x52|\x83\x5c|\x83\x6b|\x83\x74|\x83\x83|\x83\x85|\x83\x89|\x83\x92//g){
+				$count += 13;
+			}
+			elsif ($_ =~ s/\x81\x52|\x81\x53|\x81\x54|\x82\x61|\x82\x62|\x82\x63|\x82\x66|\x82\x67|\x82\x6a|\x82\x6d|\x82\x71|\x82\x72|\x82\x74|\x82\x97|\x82\x9f|\x82\xa5|\x82\xb3|\x82\xb5|\x82\xb6|\x82\xc6|\x82\xe5|\x82\xe8|\x83\x40|\x83\x44|\x83\x46|\x83\x5e|\x83\x62|\x83\x71|\x83\x81|\x83\x88|\x83\x8a|\x83\x8e|\x83\x95|\x83\x96//g){
+				$count += 12;
+			}
+			elsif ($_ =~ s/\x81\x41|\x81\x42|\x81\x43|\x81\x44|\x81\x55|\x82\x4f|\x82\x50|\x82\x51|\x82\x52|\x82\x53|\x82\x54|\x82\x55|\x82\x56|\x82\x57|\x82\x58|\x82\x60|\x82\x64|\x82\x6f|\x82\x75|\x82\xa4|\x83\x68|\x83\x6d|\x83\x7e|\x81\x40//g){
+				$count += 11;
+			}
+			elsif ($_ =~ s/\x82\x65|\x82\x69|\x82\x6b|\x82\x73|\x82\x77|\x82\x78|\x82\x79|\x82\x82|\x82\x84|\x82\x88|\x82\x8b|\x82\x8e|\x82\x8f|\x82\x90|\x82\x91|\x82\x95|\x82\xa3|\x83\x42|\x83\x67|\x83\x87//){
+				$count += 10;
+			}
+			elsif ($_ =~ s/\x82\x81|\x82\x83|\x82\x85|\x82\x87|\x82\x93|\x82\xad//g){
+				$count +=  9;
+			}
+			elsif ($_ =~ s/\x81\x45|\x81\x46|\x81\x47|\x81\x4a|\x81\x4b|\x81\x4c|\x81\x4d|\x81\x4e|\x81\x4f|\x81\x5d|\x81\x65|\x81\x66|\x81\x67|\x81\x68|\x81\x69|\x81\x6a|\x81\x6b|\x81\x6c|\x81\x6d|\x81\x6e|\x81\x6f|\x81\x70|\x81\x71|\x81\x72|\x81\x73|\x81\x74|\x81\x75|\x81\x76|\x81\x77|\x81\x78|\x81\x79|\x81\x7a|\x81\xf5|\x81\xf6|\x81\xf7|\x82\x96|\x82\x98|\x82\x99|\x82\x9a//g){
+				$count +=  8;
+			}
+			# There is no character of 7 dots.
+			elsif ($_ =~ s/\x82\x92//g){
+				$count +=  6;
+			}
+			elsif ($_ =~ s/\x82\x86|\x82\x94//g){
+				$count +=  5;
+			}
+			elsif ($_ =~ s/\x82\x68|\x82\x89|\x82\x8a|\x82\x8c//g){
+				$count +=  4;
+			}
+			# There is no character of 3 dots.
+			else {
+				$count += 16;
+			}
+		}
+		#------------------- 1byte
+		else {
+			# There is no character of 15 dots.
+			# There is no character of 14 dots.
+			# There is no character of 13 dots.
+			if    ($_ =~ s/\x4d|\x57|\x6d//g){
+				$count += 12;
+			}
+			elsif ($_ =~ s/\x40|\x43|\x47|\x4f|\x51|\xbb|\xd1|\xd4|\xd9//g){
+				$count += 11;
+			}
+			elsif ($_ =~ s/\x26|\x41|\x42|\x44|\x48|\x4b|\x4e|\x50|\x52|\x53|\x55|\x56|\x58|\x77|\xb0|\xb1|\xb3|\xb4|\xb5|\xb7|\xb9|\xbd|\xbe|\xc1|\xc2|\xc3|\xc5|\xc6|\xc8|\xca|\xcd|\xce|\xcf|\xd3|\xd5//){
+				$count += 10;
+			}
+			elsif ($_ =~ s/\x45|\x46|\x4a|\x4c|\x54|\x59|\x5a|\xa6|\xb2|\xb6|\xb8|\xba|\xbc|\xbf|\xc0|\xc7|\xcc|\xd7|\xda|\xdb|\xdc|\xdd//g){
+				$count +=  9;
+			}
+			elsif ($_ =~ s/\x61|\x62|\x63|\x64|\x65|\x68|\x6e|\x6f|\x70|\x71|\x75|\x76|\x79|\x22|\x23|\x24|\x25|\x2a|\x2b|\x2d|\x2f|\x30|\x31|\x32|\x33|\x34|\x35|\x36|\x37|\x38|\x39|\x3c|\x3d|\x3e|\x5c|\xa7|\xa9|\xaa|\xab|\xac|\xad|\xaf|\xc9|\xcb|\xd2|\xd6|\xd8//g){
+				$count +=  8;
+			}
+			elsif ($_ =~ s/\x3f|\x5e|\x60|\x67|\x6b|\x73|\x78|\x7a|\x7e|\xa2|\xa3|\xa5|\xa8|\xae|\xc4|\xd0|\xa1|\xa4//g){
+				$count +=  7;
+			}
+			elsif ($_ =~ s/\x72|\x74//g){
+				$count +=  6;
+			}
+			elsif ($_ =~ s/\x28|\x29|\x5b|\x5d|\x5f|\x66|\x20//g){
+				$count +=  5;
+			}
+			elsif ($_ =~ s/\x21|\x49|\x6a|\x7b|\x7c|\x7d|\xde|\xdf//g){
+				$count +=  4;
+			}
+			elsif ($_ =~ s/\x27|\x2c|\x2e|\x3a|\x3b|\x69|\x6c//g){
+				$count +=  3;
+			}
+		}
+	}
+
+	return $count;
+}
+#-------------------------------------------------------------------------------
+# The variable of the character string is resolved to the array of one character.
+# $aart -> divide($str);
+#-------------------------------------------------------------------------------
+sub divide {
+	my $self   = shift;
+	my $str    = shift;
+
+	return $self -> divide_euc($str)  if $code eq 'euc';
+	return $self -> divide_sjis($str) if $code eq 'sjis';
+}
+# When you want to process it with EUC-JP disregarding the character-code declaration
+# $aart -> divide_euc($str);
+sub divide_euc {
+	my $self = shift;
+	my $str  = shift;
+
+	my $esc        = '[\x00-\x1F]';
+	my $oneBytes   = '[\x20-\x7E]';
+	my $twoBytes1  = '\x8E[\xA1-\xDF]';
+	my $twoBytes2  = '[\xA1-\xFE][\xA1-\xFE]';
+	my $threeBytes = '\x8F[\xA1-\xFE][\xA1-\xFE]';
+
+	$str =~ s/$esc//og;
+	my @array = $str =~ /$oneBytes|$twoBytes1|$twoBytes2|$threeBytes/og;
+	return @array;
+}
+# When you want to process it with Shift_JIS disregarding the character-code declaration
+# $aart -> divide_sjis($str);
+sub divide_sjis {
+	my $self = shift;
+	my $str  = shift;
+
+	my $esc       = '[\x00-\x1F]';
+	my $oneBytes  = '[\x20-\x7E\xA1-\xDF]';
+	my $twoBytes1 = '[\x81-\x9F][\x40-\x7E]';
+	my $twoBytes2 = '[\xE0-\xEF][\x80-\xFC]';
+
+	$str =~ s/$esc//og;
+	my @array;
+	while($str) {
+		$str =~ s/(.)//;
+		my $tmp = $1;
+
+		if ($tmp =~ /$oneBytes/og) {
+			push @array , $tmp;
+			next;
+		}
+		$str =~ s/(.)//;
+		$tmp .= $1;
+		push @array , $tmp;
+	}
+
+	return @array;
+}
 #-------------------------------------------------------------------------------
 # The character string that adds the adjustment dot is returned.
 # $aart -> adjust($str_l, $str_r, position, $size);
@@ -113,18 +257,20 @@ sub adjust {
 	my $position = shift;
 	my $size     = shift;
 
-	return $self -> adjust_euc_right($str_l, $str_r, $size) if $code eq 'euc' && $position eq 'R';
-	return $self -> adjust_euc_left($str_l, $str_r, $size)  if $code eq 'euc' && $position eq 'L';
+	return $self -> adjust_right_euc($str_l, $str_r, $size) if $code eq 'euc' && $position eq 'R';
+	return $self -> adjust_left_euc($str_l, $str_r, $size)  if $code eq 'euc' && $position eq 'L';
+	return $self -> adjust_right_sjis($str_l, $str_r, $size) if $code eq 'sjis' && $position eq 'R';
+	return $self -> adjust_left_sjis($str_l, $str_r, $size)  if $code eq 'sjis' && $position eq 'L';
 }
-# When you want to process it with EUC-JP and position 'R'.
-# $aart -> adjust_euc_right($str_l, $str_r, $size);
-sub adjust_euc_right {
+# When you want to process it with EUC-JP disregarding the character-code declaration and position 'R'.
+# $aart -> adjust_right_euc($str_l, $str_r, $size);
+sub adjust_right_euc {
 	my $self  = shift;
 	my $str_l = shift;
 	my $str_r = shift;
 	my $size  = shift;
-
 	my $count = $self -> calcu_euc("$str_l$str_r");
+
 	my $diff = $size - $count;
 	my $space = int( $diff/11 );
 
@@ -159,12 +305,12 @@ sub adjust_euc_right {
 
 	return "$str_l$set2$str_r";
 }
-# When you want to process it with EUC-JP and position 'L'.
-# $aart -> adjust_euc_left($str_l, $str_r, $size);
-sub adjust_euc_left {
+# When you want to process it with EUC-JP disregarding the character-code declaration and position 'L'.
+# $aart -> adjust_left_euc($str_l, $str_r, $size);
+sub adjust_left_euc {
 	my $self   = shift;
-	my $str_l  = shift;
-	my $str_r  = shift;
+	my $str_l  = join '', $self -> divide_euc(shift);
+	my $str_r  = join '', $self -> divide_euc(shift);
 	my $size   = shift;
 
 	my $count = $self -> calcu_euc("$str_l$str_r");
@@ -201,18 +347,103 @@ sub adjust_euc_left {
 
 	return "$str_l$set2$str_r";
 }
+# When you want to process it with Shift_JIS disregarding the character-code declaration and position 'R'.
+# $aart -> adjust_right_sjis($str_l, $str_r, $size);
+sub adjust_right_sjis {
+	my $self  = shift;
+	my $str_l = shift;
+	my $str_r = shift;
+	my $size  = shift;
+	my $count = $self -> calcu_sjis("$str_l$str_r");
+
+	my $diff = $size - $count;
+	my $space = int( $diff/11 );
+
+	my $set2 = '';
+	for (my $t = 0; $t < $space; $t ++) {
+		$diff -= 11;
+		$set2 .= "\x81\x40";
+	}
+
+	if ($diff == 1) {
+		if ($set2 =~ s/\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40$/ \x81\x40 \x81\x40 \x81\x40 \./) {}
+		else { $set2 =~ s/\x81\x40$/\.\.\.\./; }
+	}
+	if ($diff == 2) { $set2 =~ s/\x81\x40\x81\x40$/ \x81\x40 \./ }
+	if ($diff == 3) { $set2 .= '.' }
+	if ($diff == 4) {
+		if ($set2 =~ s/\x81\x40\x81\x40\x81\x40$/ \x81\x40 \x81\x40 /) {}
+		else { $set2 =~ s/\x81\x40$/\.\.\.\.\./; }
+	}
+	if ($diff == 5) { $set2 .= ' ' }
+	if ($diff == 6) {
+		if ($set2 =~ s/\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40$/ \x81\x40 \x81\x40 \x81\x40 \. /) {}
+		else { $set2 .= '..' }
+	}
+	if ($diff == 7) { $set2 =~ s/\x81\x40\x81\x40\x81\x40$/ \x81\x40 \x81\x40 \./ }
+	if ($diff == 8) { $set2 .= ' .' }
+	if ($diff == 9) {
+		if ($set2 =~ s/\x81\x40\x81\x40\x81\x40\x81\x40$/ \x81\x40 \x81\x40 \x81\x40 /) {}
+		else { $set2 .= '...' }
+	}
+	if ($diff == 10) { $set2 =~ s/\x81\x40\x81\x40$/\x81\x40 \x81\x40 / }
+
+	return "$str_l$set2$str_r";
+}
+# When you want to process it with Shift_JIS disregarding the character-code declaration and position 'L'.
+# $aart -> adjust_left_sjis($str_l, $str_r, $size);
+sub adjust_left_sjis {
+	my $self   = shift;
+	my $str_l  = shift;
+	my $str_r  = shift;
+	my $size   = shift;
+
+	my $count = $self -> calcu_sjis("$str_l$str_r");
+	my $diff = $size - $count;
+	my $space = int( $diff/11 );
+
+	my $set2 = '';
+	for (my $t = 0; $t < $space; $t ++) {
+		$diff -= 11;
+		$set2 .= "\x81\x40";
+	}
+	if ($diff == 1) {
+		if ($set2 =~ s/^\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40/\. \x81\x40 \x81\x40 \x81\x40 /) {}
+		else { $set2 =~ s/^\x81\x40/\.\.\.\./; }
+	}
+	if ($diff == 2) { $set2 =~ s/^\x81\x40\x81\x40/\. \x81\x40 / }
+	if ($diff == 3) { $set2 = '.'.$set2 }
+	if ($diff == 4) {
+		if ($set2 =~ s/^\x81\x40\x81\x40\x81\x40/ \x81\x40 \x81\x40 /) {}
+		else { $set2 =~ s/^\x81\x40/\.\.\.\.\./ }
+	}
+	if ($diff == 5) { $set2 = ' '.$set2 }
+	if ($diff == 6) {
+		if ($set2 =~ s/^\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40/ \. \x81\x40 \x81\x40 \x81\x40 /) {}
+		else { $set2 = '..'.$set2 }
+	}
+	if ($diff == 7) { $set2 =~ s/^\x81\x40\x81\x40\x81\x40/\. \x81\x40 \x81\x40 / }
+	if ($diff == 8) { $set2 = '. '.$set2 }
+	if ($diff == 9) {
+		if ($set2 =~ s/^\x81\x40\x81\x40\x81\x40\x81\x40/ \x81\x40 \x81\x40 \x81\x40 /) {}
+		else { $set2 = '...'.$set2 }
+	}
+	if ($diff == 10) { $set2 =~ s/^\x81\x40\x81\x40/\x81\x40 \x81\x40 / }
+
+	return "$str_l$set2$str_r";
+}
 #-------------------------------------------------------------------------------
-# The number of minimum pixels where the character string of
-# the array becomes complete is returned.
+# The number of minimum dots where the character string of the array becomes complete is returned.
 # $aart -> shorter(@array);
 #-------------------------------------------------------------------------------
 sub shorter {
 	my $self   = shift;
 	my @array  = @_;
 
-	return $self -> shorter_euc(@array) if $code eq 'euc';
+	return $self -> shorter_euc(@array)  if $code eq 'euc';
+	return $self -> shorter_sjis(@array) if $code eq 'sjis';
 }
-# When you want to process it with EUC-JP.
+# When you want to process it with EUC-JP disregarding the character-code declaration.
 # $aart -> shorter_euc(@array);
 sub shorter_euc {
 	my $self  = shift;
@@ -228,8 +459,36 @@ sub shorter_euc {
 	while (1) {
 		my $flag = 0;
 		foreach my $set (@array) {
-			my $temp = $self -> adjust_euc_right($set,'',$fit);
+			my $temp = $self -> adjust_right_euc($set,'',$fit);
 			my $temp2 = $self -> calcu_euc($temp);
+			next if $fit == $temp2;
+			$flag = 1;
+			$fit ++;
+			last;
+		}
+		last unless $flag;
+	}
+
+	return $fit;
+}
+# When you want to process it with Shift_JIS disregarding the character-code declaration.
+# $aart -> shorter_sjis(@array);
+sub shorter_sjis {
+	my $self  = shift;
+	my @array = @_;
+	my $fit   = 0;
+
+	foreach my $buf (@array) {
+		my $set = $self -> calcu_sjis($buf);
+		next if $fit >= $set;
+		$fit = $set;
+	}
+
+	while (1) {
+		my $flag = 0;
+		foreach my $set (@array) {
+			my $temp = $self -> adjust_right_sjis($set,'',$fit);
+			my $temp2 = $self -> calcu_sjis($temp);
 			next if $fit == $temp2;
 			$flag = 1;
 			$fit ++;
